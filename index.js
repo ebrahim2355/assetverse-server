@@ -24,6 +24,7 @@ async function run() {
     try {
         const db = client.db("assetverse_db");
         const usersCollection = db.collection("users");
+        const assignedAssetsCollection = db.collection("assignedAssets");
 
         // USERS APIs
         app.post("/users/employee", async (req, res) => {
@@ -40,7 +41,7 @@ async function run() {
 
                 const result = await usersCollection.insertOne(user);
                 res.send(result);
-            } catch {
+            } catch (error) {
                 res.status(500).send({ error: error.message });
             }
         })
@@ -63,7 +64,7 @@ async function run() {
 
                 const result = await usersCollection.insertOne(user);
                 res.send(result);
-            } catch {
+            } catch (error) {
                 res.status(500).send({ error: error.message });
             }
         })
@@ -81,6 +82,68 @@ async function run() {
             const user = await usersCollection.findOne(query);
             res.send({ role: user?.role })
         })
+
+        // ASSIGNED ASSETS APIs
+        app.get("/assigned-assets/:email", async (req, res) => {
+            try {
+                const email = req.params.email;
+
+                const query = { employeeEmail: email };
+                const result = await assignedAssetsCollection.find(query).toArray();
+
+                res.send(result);
+
+            } catch (error) {
+                res.status(500).send({ error: error.message });
+            }
+        });
+
+        app.post("/assigned-assets", async (req, res) => {
+            try {
+                const assetData = req.body;
+
+                // Required fields
+                const {
+                    assetId,
+                    assetName,
+                    assetImage,
+                    assetType,
+                    employeeEmail,
+                    employeeName,
+                    hrEmail,
+                    companyName
+                } = assetData;
+
+                if (!assetId || !employeeEmail || !assetName) {
+                    return res.status(400).send({ error: "Missing required fields" });
+                }
+
+                const newAssignedAsset = {
+                    assetId,
+                    assetName,
+                    assetImage,
+                    assetType,
+                    employeeEmail,
+                    employeeName,
+                    hrEmail,
+                    companyName,
+                    assignmentDate: new Date(),
+                    returnDate: null,
+                    status: "assigned"
+                };
+
+                const result = await assignedAssetsCollection.insertOne(newAssignedAsset);
+
+                res.send({
+                    success: true,
+                    message: "Asset assigned successfully",
+                    insertedId: result.insertedId
+                });
+
+            } catch (error) {
+                res.status(500).send({ error: error.message });
+            }
+        });
 
 
         await client.db("admin").command({ ping: 1 });
