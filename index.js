@@ -22,9 +22,65 @@ const client = new MongoClient(uri, {
 
 async function run() {
     try {
-        await client.connect();
-
         const db = client.db("assetverse_db");
+        const usersCollection = db.collection("users");
+
+        // USERS APIs
+        app.post("/users/employee", async (req, res) => {
+            try {
+                const user = req.body;
+                const email = user.email;
+                user.role = "employee";
+                user.createdAt = new Date();
+
+                const userExist = await usersCollection.findOne({ email });
+                if (userExist) {
+                    return res.send({ message: "user exists" });
+                }
+
+                const result = await usersCollection.insertOne(user);
+                res.send(result);
+            } catch {
+                res.status(500).send({ error: error.message });
+            }
+        })
+
+        app.post("/users/hr", async (req, res) => {
+            try {
+                const user = req.body;
+                const email = user.email;
+
+                const userExist = await usersCollection.findOne({ email });
+                if (userExist) {
+                    return res.send({ message: "user exists" });
+                }
+
+                user.role = "hr";
+                user.packageLimit = 5;
+                user.currentEmployees = 0;
+                user.subscription = "basic";
+                user.createdAt = new Date();
+
+                const result = await usersCollection.insertOne(user);
+                res.send(result);
+            } catch {
+                res.status(500).send({ error: error.message });
+            }
+        })
+
+        app.get("/users", async (req, res) => {
+            const cursor = usersCollection.find();
+            const result = await cursor.toArray();
+            res.send(result);
+        })
+
+        app.get("/users/:email/role", async (req, res) => {
+            const email = req.params.email;
+            const query = { email };
+            console.log(query.role)
+            const user = await usersCollection.findOne(query);
+            res.send({ role: user?.role })
+        })
 
 
         await client.db("admin").command({ ping: 1 });
