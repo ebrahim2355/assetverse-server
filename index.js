@@ -27,6 +27,7 @@ async function run() {
         const assignedAssetsCollection = db.collection("assignedAssets");
         const assetsCollection = db.collection("assets");
         const requestsCollection = db.collection("requests");
+        const affiliationsCollection = db.collection("affiliations");
 
         // USERS APIs
         app.post("/users/employee", async (req, res) => {
@@ -220,10 +221,70 @@ async function run() {
             res.send(result);
         });
 
+        // AFFILIATIONS APIS
+        app.post("/affiliations", async (req, res) => {
+            try {
+                const affiliation = req.body;
+                const { employeeEmail, hrEmail } = affiliation;
+
+                // Check if already affiliated
+                const exists = await affiliationsCollection.findOne({
+                    employeeEmail,
+                    hrEmail
+                });
+
+                if (exists) {
+                    return res.send({ message: "Already affiliated", inserted: false });
+                }
+
+                affiliation.affiliationDate = new Date();
+                affiliation.status = "active";
+
+                const result = await affiliationsCollection.insertOne(affiliation);
+                res.send(result);
+
+            } catch (error) {
+                res.status(500).send({ error: error.message });
+            }
+        });
+
+        app.get("/affiliations/employee/:email", async (req, res) => {
+            try {
+                const email = req.params.email;
+
+                const affiliations = await affiliationsCollection
+                    .find({ employeeEmail: email })
+                    .toArray();
+
+                res.send(affiliations);
+            } catch (error) {
+                res.status(500).send({ error: error.message });
+            }
+        });
+
+        app.get("/affiliations/team/:hrEmail", async (req, res) => {
+            try {
+                const hrEmail = req.params.hrEmail;
+
+                const affiliations = await affiliationsCollection.find({ hrEmail }).toArray();
+
+                const employeeEmails = affiliations.map(a => a.employeeEmail);
+
+                const users = await usersCollection
+                    .find({ email: {$in: employeeEmails} })
+                    .toArray();
+
+                res.send(users);
+
+            } catch (error) {
+                res.status(500).send({ error: error.message });
+            }
+        });
 
 
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
+
     } finally {
 
     }
