@@ -78,6 +78,12 @@ async function run() {
             res.send(result);
         })
 
+        app.get("/users/:email", async (req, res) => {
+            const email = req.params.email;
+            const user = await usersCollection.findOne({ email });
+            res.send(user);
+        });
+
         app.get("/users/:email/role", async (req, res) => {
             const email = req.params.email;
             const query = { email };
@@ -85,6 +91,18 @@ async function run() {
             const user = await usersCollection.findOne(query);
             res.send({ role: user?.role })
         })
+
+        app.patch("/users/:email", async (req, res) => {
+            const email = req.params.email;
+            const updatedData = req.body;
+
+            const result = await usersCollection.updateOne(
+                { email },
+                { $set: updatedData }
+            );
+
+            res.send(result);
+        });
 
         // ASSIGNED ASSETS APIs
         app.get("/assigned-assets/:email", async (req, res) => {
@@ -271,7 +289,7 @@ async function run() {
                 const employeeEmails = affiliations.map(a => a.employeeEmail);
 
                 const users = await usersCollection
-                    .find({ email: {$in: employeeEmails} })
+                    .find({ email: { $in: employeeEmails } })
                     .toArray();
 
                 res.send(users);
