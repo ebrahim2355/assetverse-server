@@ -25,6 +25,8 @@ async function run() {
         const db = client.db("assetverse_db");
         const usersCollection = db.collection("users");
         const assignedAssetsCollection = db.collection("assignedAssets");
+        const assetsCollection = db.collection("assets");
+        const requestsCollection = db.collection("requests");
 
         // USERS APIs
         app.post("/users/employee", async (req, res) => {
@@ -144,6 +146,80 @@ async function run() {
                 res.status(500).send({ error: error.message });
             }
         });
+
+        // ALL ASSETS APIs
+        app.get("/assets", async (req, res) => {
+            const availableOnly = req.query.available === "true";
+            let query = {};
+
+            if (availableOnly) {
+                query = { availableQuantity: { $gt: 0 } };
+            }
+
+            const assets = await assetsCollection.find(query).toArray();
+            res.send(assets);
+        });
+
+        app.post("/assets", /* verifyHR, */ async (req, res) => {
+            try {
+                const {
+                    productName,
+                    productImage = "",
+                    productType,
+                    productQuantity,
+                    hrEmail,
+                    companyName = ""
+                } = req.body;
+
+                // Basic validation
+                if (!productName || !productType || typeof productQuantity !== "number" || !hrEmail) {
+                    return res.status(400).send({
+                        error: "Missing required fields. Required: productName, productType, productQuantity (number), hrEmail"
+                    });
+                }
+
+                if (!["Returnable", "Non-returnable"].includes(productType)) {
+                    return res.status(400).send({ error: "productType must be 'Returnable' or 'Non-returnable'" });
+                }
+
+                if (productQuantity < 0) {
+                    return res.status(400).send({ error: "productQuantity must be >= 0" });
+                }
+
+                const assetDoc = {
+                    productName,
+                    productImage,
+                    productType,
+                    productQuantity,
+                    availableQuantity: productQuantity,
+                    dateAdded: new Date(),
+                    hrEmail,
+                    companyName
+                };
+
+                const result = await assetsCollection.insertOne(assetDoc);
+
+                res.status(201).send({
+                    message: "Asset created",
+                    insertedId: result.insertedId,
+                    asset: { ...assetDoc, _id: result.insertedId }
+                });
+            } catch (error) {
+                console.error("POST /assets error:", error);
+                res.status(500).send({ error: error.message });
+            }
+        });
+
+        // REQUESTS APIs
+        app.post("/requests", async (req, res) => {
+            const data = req.body;
+            data.requestDate = new Date();
+            data.requestStatus = "pending";
+
+            const result = await requestsCollection.insertOne(data);
+            res.send(result);
+        });
+
 
 
         await client.db("admin").command({ ping: 1 });
