@@ -97,15 +97,21 @@ async function run() {
 
         app.patch("/users/:email", async (req, res) => {
             const email = req.params.email;
-            const updatedData = req.body;
+            const body = req.body;
+
+            const updateQuery = {};
+
+            if (body.$set) updateQuery.$set = body.$set;
+            if (body.$inc) updateQuery.$inc = body.$inc;
 
             const result = await usersCollection.updateOne(
                 { email },
-                { $set: updatedData }
+                updateQuery
             );
 
             res.send(result);
         });
+
 
         // ASSIGNED ASSETS APIs
         app.get("/assigned-assets/:email", async (req, res) => {
@@ -291,7 +297,6 @@ async function run() {
 
             res.send(result);
         });
-
 
         // AFFILIATIONS APIS
         app.post("/affiliations", async (req, res) => {
