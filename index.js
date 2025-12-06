@@ -1,6 +1,6 @@
 const express = require('express')
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express()
 require("dotenv").config();
 const port = process.env.PORT || 3000;
@@ -79,15 +79,18 @@ async function run() {
         })
 
         app.get("/users/:email", async (req, res) => {
-            const email = req.params.email;
-            const user = await usersCollection.findOne({ email });
-            res.send(user);
+            try {
+                const email = req.params.email;
+                const user = await usersCollection.findOne({ email });
+                res.send(user);
+            } catch (error) {
+                res.status(500).send({ error: error.message });
+            }
         });
 
         app.get("/users/:email/role", async (req, res) => {
             const email = req.params.email;
             const query = { email };
-            console.log(query.role)
             const user = await usersCollection.findOne(query);
             res.send({ role: user?.role })
         })
@@ -179,6 +182,31 @@ async function run() {
             res.send(assets);
         });
 
+        app.get("/assets/:hrEmail", async (req, res) => {
+            const hrEmail = req.params.hrEmail;
+            const assets = await assetsCollection.find({ hrEmail }).toArray();
+            res.send(assets);
+        });
+
+        app.get("/assets/id/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await assetsCollection.findOne(query);
+            res.send(result);
+        });
+
+        app.patch("/assets/:id", async (req, res) => {
+            const id = req.params.id;
+            const updateData = req.body;
+
+            const result = await assetsCollection.updateOne(
+                { _id: new ObjectId(id) },
+                { $set: updateData }
+            );
+
+            res.send(result);
+        });
+
         app.post("/assets", /* verifyHR, */ async (req, res) => {
             try {
                 const {
@@ -228,6 +256,13 @@ async function run() {
                 res.status(500).send({ error: error.message });
             }
         });
+
+        app.delete("/assets/:id", async (req, res) => {
+            const id = new ObjectId(req.params.id);
+            const result = await assetsCollection.deleteOne({ _id: id });
+            res.send(result);
+        });
+
 
         // REQUESTS APIs
         app.post("/requests", async (req, res) => {
