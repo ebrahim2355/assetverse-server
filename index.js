@@ -201,7 +201,7 @@ async function run() {
 
             const result = await assetsCollection.updateOne(
                 { _id: new ObjectId(id) },
-                { $set: updateData }
+                updateData
             );
 
             res.send(result);
@@ -273,6 +273,25 @@ async function run() {
             const result = await requestsCollection.insertOne(data);
             res.send(result);
         });
+
+        app.get("/requests", async (req, res) => {
+            const hrEmail = req.query.hrEmail;
+            const result = await requestsCollection.find({ hrEmail }).toArray();
+            res.send(result);
+        });
+
+        app.patch("/requests/:id", async (req, res) => {
+            const id = new ObjectId(req.params.id);
+            const update = req.body;
+
+            const result = await requestsCollection.updateOne(
+                { _id: id },
+                { $set: update }
+            );
+
+            res.send(result);
+        });
+
 
         // AFFILIATIONS APIS
         app.post("/affiliations", async (req, res) => {
