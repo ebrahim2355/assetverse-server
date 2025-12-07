@@ -54,6 +54,48 @@ async function run() {
             }
         });
 
+        // ANALYTICS APIs
+        app.get("/analytics/asset-distribution/:hrEmail", async (req, res) => {
+            try {
+                const hrEmail = req.params.hrEmail;
+
+                const assets = await assetsCollection.find({ hrEmail }).toArray();
+
+                const returnable = assets.filter(a => a.productType === "Returnable").length;
+                const nonReturnable = assets.filter(a => a.productType === "Non-returnable").length;
+
+                res.send({
+                    returnable,
+                    nonReturnable
+                });
+            } catch (error) {
+                res.status(500).send({ error: error.message });
+            }
+        });
+
+        app.get("/analytics/top-requests/:hrEmail", async (req, res) => {
+            try {
+                const hrEmail = req.params.hrEmail;
+
+                const requests = await requestsCollection.find({ hrEmail }).toArray();
+
+                const countMap = {};
+
+                requests.forEach(r => {
+                    if (!countMap[r.assetName]) countMap[r.assetName] = 0;
+                    countMap[r.assetName] += 1;
+                });
+
+                const sorted = Object.entries(countMap)
+                    .map(([name, count]) => ({ name, count }))
+                    .sort((a, b) => b.count - a.count)
+                    .slice(0, 5);
+
+                res.send(sorted);
+            } catch (error) {
+                res.status(500).send({ error: error.message });
+            }
+        });
 
         // USERS APIs
         app.post("/users/employee", async (req, res) => {
@@ -271,15 +313,36 @@ async function run() {
 
         // ALL ASSETS APIs
         app.get("/assets", async (req, res) => {
-            const availableOnly = req.query.available === "true";
-            let query = {};
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const skip = (page - 1) * limit;
 
+            const availableOnly = req.query.available === "true";
+
+            let query = {};
             if (availableOnly) {
                 query = { availableQuantity: { $gt: 0 } };
             }
 
-            const assets = await assetsCollection.find(query).toArray();
-            res.send(assets);
+            if (req.query.search) {
+                query.productName = { $regex: req.query.search, $options: "i" };
+            }
+
+            const total = await assetsCollection.countDocuments(query);
+
+            const assets = await assetsCollection
+                .find(query)
+                .skip(skip)
+                .limit(limit)
+                .toArray();
+
+            res.send({
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+                assets
+            });
         });
 
         app.get("/assets/:hrEmail", async (req, res) => {
@@ -446,19 +509,50 @@ async function run() {
             try {
                 const hrEmail = req.params.hrEmail;
 
-                const affiliations = await affiliationsCollection.find({ hrEmail }).toArray();
+                const affiliations = await affiliationsCollection
+                    .find({ hrEmail })
+                    .sort({ createdAt: -1 })
+                    .toArray();
 
                 const employeeEmails = affiliations.map(a => a.employeeEmail);
+
+                if (employeeEmails.length === 0) {
+                    return res.send([]);
+                }
 
                 const users = await usersCollection
                     .find({ email: { $in: employeeEmails } })
                     .toArray();
 
-                res.send(users);
+                const employeesWithAssets = await Promise.all(
+                    users.map(async (emp) => {
+                        const assetCount = await assignedAssetsCollection.countDocuments({
+                            employeeEmail: emp.email
+                        })
+                        return {
+                            ...emp,
+                            assetCount
+                        }
+                    })
+                )
+
+                res.send(employeesWithAssets);
 
             } catch (error) {
                 res.status(500).send({ error: error.message });
             }
+        });
+
+        app.delete("/affiliations/remove/:email", async (req, res) => {
+            const employeeEmail = req.params.email;
+            const hrEmail = req.query.hr;
+
+            const result = await affiliationsCollection.deleteOne({
+                employeeEmail,
+                hrEmail
+            });
+
+            res.send(result);
         });
 
 
