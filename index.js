@@ -31,6 +31,29 @@ async function run() {
         const requestsCollection = db.collection("requests");
         const affiliationsCollection = db.collection("affiliations");
         const paymentsCollection = db.collection("payments");
+        const packagesCollection = db.collection("packages");
+        const testimonialsCollection = db.collection("testimonials");
+
+        // PACKAGES APIs
+        app.get("/packages", async (req, res) => {
+            try {
+                const result = await packagesCollection.find().toArray();
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ error: err.message });
+            }
+        });
+
+        // TESTIMONIALS APIs
+        app.get("/testimonials", async (req, res) => {
+            try {
+                const result = await testimonialsCollection.find().toArray();
+                res.send(result);
+            } catch (error) {
+                res.status(500).send({ error: error.message });
+            }
+        });
+
 
         // USERS APIs
         app.post("/users/employee", async (req, res) => {
