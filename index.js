@@ -113,7 +113,7 @@ async function run() {
             );
 
             res.send(result);
-        });
+        })
 
         // PAYMENT RELATED APIs
         app.post("/create-checkout-session", async (req, res) => {
@@ -124,6 +124,11 @@ async function run() {
                     payment_method_types: ["card"],
                     mode: "payment",
                     customer_email: email,
+                    metadata: {
+                        plan: packageName,
+                        limit: employeeLimit,
+                        hrEmail: email
+                    },
                     line_items: [
                         {
                             price_data: {
@@ -136,7 +141,7 @@ async function run() {
                             quantity: 1,
                         },
                     ],
-                    success_url: `${process.env.SITE_DOMAIN}/dashboard/hr/upgrade?success=true&plan=${packageName}&limit=${employeeLimit}`,
+                    success_url: `${process.env.SITE_DOMAIN}/dashboard/hr/payment-success?session_id={CHECKOUT_SESSION_ID}`,
                     cancel_url: `${process.env.SITE_DOMAIN}/dashboard/hr/upgrade?canceled=true`,
                 });
 
@@ -148,9 +153,26 @@ async function run() {
             }
         });
 
+        app.get("/checkout-session/:id", async (req, res) => {
+            try {
+                const session = await stripe.checkout.sessions.retrieve(req.params.id);
+                res.send(session);
+            } catch (error) {
+                res.status(500).send({ error: error.message });
+            }
+        });
+
         app.post("/payments", async (req, res) => {
             try {
                 const payment = req.body;
+
+                const exists = await paymentsCollection.findOne({
+                    transactionId: payment.transactionId
+                })
+
+                if (exists) {
+                    return res.send({ inserted: false, message: "Payment already recorded" });
+                }
 
                 payment.date = new Date();
 
@@ -252,11 +274,20 @@ async function run() {
 
         app.patch("/assets/:id", async (req, res) => {
             const id = req.params.id;
-            const updateData = req.body;
+            const body = req.body;
+
+            const updateQuery = {};
+
+            if (body.$set) {
+                updateQuery.$set = body.$set;
+            }
+            if (body.$inc) {
+                updateQuery.$inc = body.$inc;
+            }
 
             const result = await assetsCollection.updateOne(
                 { _id: new ObjectId(id) },
-                updateData
+                updateQuery
             );
 
             res.send(result);
