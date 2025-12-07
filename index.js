@@ -30,6 +30,7 @@ async function run() {
         const assetsCollection = db.collection("assets");
         const requestsCollection = db.collection("requests");
         const affiliationsCollection = db.collection("affiliations");
+        const paymentsCollection = db.collection("payments");
 
         // USERS APIs
         app.post("/users/employee", async (req, res) => {
@@ -143,6 +144,20 @@ async function run() {
 
             } catch (error) {
                 console.log(error);
+                res.status(500).send({ error: error.message });
+            }
+        });
+
+        app.post("/payments", async (req, res) => {
+            try {
+                const payment = req.body;
+
+                payment.date = new Date();
+
+                const result = await paymentsCollection.insertOne(payment);
+                res.send(result);
+
+            } catch (error) {
                 res.status(500).send({ error: error.message });
             }
         });
