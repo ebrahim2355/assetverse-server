@@ -3,6 +3,8 @@ const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express()
 require("dotenv").config();
+const stripe = require("stripe")(process.env.STRIPE_SECRET);
+
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
@@ -112,6 +114,38 @@ async function run() {
             res.send(result);
         });
 
+        // PAYMENT RELATED APIs
+        app.post("/create-checkout-session", async (req, res) => {
+            try {
+                const { packageName, price, email, employeeLimit } = req.body;
+
+                const session = await stripe.checkout.sessions.create({
+                    payment_method_types: ["card"],
+                    mode: "payment",
+                    customer_email: email,
+                    line_items: [
+                        {
+                            price_data: {
+                                currency: "usd",
+                                product_data: {
+                                    name: `${packageName} Plan`,
+                                },
+                                unit_amount: price * 100,
+                            },
+                            quantity: 1,
+                        },
+                    ],
+                    success_url: `${process.env.SITE_DOMAIN}/dashboard/hr/upgrade?success=true&plan=${packageName}&limit=${employeeLimit}`,
+                    cancel_url: `${process.env.SITE_DOMAIN}/dashboard/hr/upgrade?canceled=true`,
+                });
+
+                res.send({ url: session.url });
+
+            } catch (error) {
+                console.log(error);
+                res.status(500).send({ error: error.message });
+            }
+        });
 
         // ASSIGNED ASSETS APIs
         app.get("/assigned-assets/:email", async (req, res) => {
