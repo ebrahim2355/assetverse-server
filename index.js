@@ -385,7 +385,7 @@ async function run() {
             });
         });
 
-        app.get("/assets/:hrEmail", async (req, res) => {
+        app.get("/assets/:hrEmail", verifyToken, async (req, res) => {
             const hrEmail = req.params.hrEmail;
             const assets = await assetsCollection.find({ hrEmail }).toArray();
             res.send(assets);
@@ -492,7 +492,7 @@ async function run() {
             res.send(result);
         });
 
-        app.patch("/requests/:id", async (req, res) => {
+        app.patch("/requests/:id", verifyToken, verifyHR, async (req, res) => {
             const id = new ObjectId(req.params.id);
             const update = req.body;
 
@@ -583,7 +583,7 @@ async function run() {
             }
         });
 
-        app.delete("/affiliations/remove/:email", async (req, res) => {
+        app.delete("/affiliations/remove/:email", verifyToken, verifyHR, async (req, res) => {
             const employeeEmail = req.params.email;
             const hrEmail = req.query.hr;
 
