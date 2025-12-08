@@ -5,6 +5,13 @@ This repository contains the Node.js + Express + MongoDB backend API with secure
 
 ---
 
+### Smart Asset & HR Management Platform
+**Live Demo** → https://assetverse.netlify.app/
+
+**Frontend Repo** → https://github.com/ebrahim2355/assetverse-client
+
+---
+
 ## 📌 Features
 
 ### 🔐 **Authentication & Authorization**
