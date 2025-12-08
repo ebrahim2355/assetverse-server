@@ -36,6 +36,8 @@ const client = new MongoClient(uri, {
 
 async function run() {
     try {
+        await client.connect();
+
         const db = client.db("assetverse_db");
         const usersCollection = db.collection("users");
         const assignedAssetsCollection = db.collection("assignedAssets");
@@ -180,13 +182,13 @@ async function run() {
             }
         })
 
-        app.get("/users", async (req, res) => {
+        app.get("/users", verifyToken, async (req, res) => {
             const cursor = usersCollection.find();
             const result = await cursor.toArray();
             res.send(result);
         })
 
-        app.get("/users/:email", async (req, res) => {
+        app.get("/users/:email", verifyToken, async (req, res) => {
             try {
                 const email = req.params.email;
                 const user = await usersCollection.findOne({ email });
@@ -203,7 +205,7 @@ async function run() {
             res.send({ role: user?.role })
         })
 
-        app.patch("/users/:email", async (req, res) => {
+        app.patch("/users/:email", verifyToken, async (req, res) => {
             const email = req.params.email;
             const body = req.body;
 
@@ -595,9 +597,6 @@ async function run() {
             res.send(result);
         });
 
-
-        await client.db("admin").command({ ping: 1 });
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
 
     } finally {
 
