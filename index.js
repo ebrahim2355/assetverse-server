@@ -36,7 +36,7 @@ const client = new MongoClient(uri, {
 
 async function run() {
     try {
-        await client.connect();
+        // await client.connect();
 
         const db = client.db("assetverse_db");
         const usersCollection = db.collection("users");
@@ -188,7 +188,7 @@ async function run() {
             res.send(result);
         })
 
-        app.get("/users/:email", verifyToken, async (req, res) => {
+        app.get("/users/:email", async (req, res) => {
             try {
                 const email = req.params.email;
                 const user = await usersCollection.findOne({ email });
