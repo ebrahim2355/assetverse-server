@@ -54,7 +54,6 @@ async function run() {
             if (!authHeader) return res.status(401).send({ message: "Unauthorized access" });
 
             const token = authHeader.split(" ")[1];
-            console.log(token)
 
             jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
                 if (err) return res.status(403).send({ message: "Forbidden access" });
@@ -255,7 +254,6 @@ async function run() {
                 res.send({ url: session.url });
 
             } catch (error) {
-                console.log(error);
                 res.status(500).send({ error: error.message });
             }
         });
@@ -348,6 +346,33 @@ async function run() {
                     insertedId: result.insertedId
                 });
 
+            } catch (error) {
+                res.status(500).send({ error: error.message });
+            }
+        });
+
+
+
+        app.get("/assets/top-used", async (req, res) => {
+            try {
+                const limit = parseInt(req.query.limit) || 6;
+
+                const result = await assignedAssetsCollection.aggregate([
+                    {
+                        $group: {
+                            _id: "$assetId",
+                            assetName: { $first: "$assetName" },
+                            assetImage: { $first: "$assetImage" },
+                            assetType: { $first: "$assetType" },
+                            companyName: { $first: "$companyName" },
+                            count: { $sum: 1 }
+                        }
+                    },
+                    { $sort: { count: -1 } },
+                    { $limit: limit }
+                ]).toArray();
+
+                res.send(result);
             } catch (error) {
                 res.status(500).send({ error: error.message });
             }
@@ -466,7 +491,6 @@ async function run() {
                     asset: { ...assetDoc, _id: result.insertedId }
                 });
             } catch (error) {
-                console.error("POST /assets error:", error);
                 res.status(500).send({ error: error.message });
             }
         });
